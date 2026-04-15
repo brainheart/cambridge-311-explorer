@@ -41,7 +41,7 @@ const state = {
   // window
   windowStart: null,
   windowEnd: null,
-  windowSizeDays: 30,
+  windowSizeDays: 90,
 
   // map
   mapMode: "pin",       // "pin" or "area"
@@ -168,9 +168,9 @@ async function loadData() {
   state.minTs = new Date(minTs);
   state.maxTs = new Date(maxTs);
 
-  // Default window: last 30 days
+  // Default window: last 90 days
   state.windowEnd = new Date(maxTs);
-  state.windowStart = new Date(maxTs - 30 * DAY_MS);
+  state.windowStart = new Date(maxTs - 90 * DAY_MS);
 
   setLoaderStatus("Ready", 100);
 }
