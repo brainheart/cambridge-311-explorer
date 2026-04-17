@@ -869,12 +869,42 @@ function buildFilterUI() {
 }
 
 // ---------- Animation ----------
+// Earliest timestamp among records matching current filters (types/statuses/nhoods),
+// ignoring the time window. Falls back to absolute minTs if nothing matches.
+function firstFilteredTs() {
+  const selTypes = state.selectedTypes;
+  const selStatuses = state.selectedStatuses;
+  const selNh = state.selectedNhoods;
+  const nhFilter = selNh.size > 0;
+  const recs = state.records;
+  let min = Infinity;
+  for (let i = 0; i < recs.length; i++) {
+    const r = recs[i];
+    if (!selTypes.has(r.type)) continue;
+    if (!selStatuses.has(r.status)) continue;
+    if (nhFilter && !selNh.has(r.nhoodIdx)) continue;
+    const t = r.ts.getTime();
+    if (t < min) min = t;
+  }
+  return isFinite(min) ? min : state.minTs.getTime();
+}
+
 function togglePlay() {
   state.playing = !state.playing;
   const btn = $("#play-btn");
   btn.textContent = state.playing ? "❚❚" : "▶";
   btn.classList.toggle("playing", state.playing);
-  if (state.playing) stepAnim();
+  if (state.playing) {
+    // If starting from "current" (window sitting at the right edge), the first
+    // step would wrap immediately — jump to where filtered data actually starts
+    // so the user sees something instead of a long empty stretch.
+    const windowMs = state.windowEnd - state.windowStart;
+    if (state.windowEnd.getTime() >= state.maxTs.getTime()) {
+      const start = firstFilteredTs();
+      setWindow(start, start + windowMs);
+    }
+    stepAnim();
+  }
   else if (state.animTimer) { clearTimeout(state.animTimer); state.animTimer = null; }
 }
 
@@ -894,9 +924,9 @@ function stepAnim() {
   let newEnd = state.windowEnd.getTime() + stepDays * DAY_MS;
   let newStart = newEnd - windowMs;
 
-  // wrap back to start when we overshoot
+  // wrap back to where filtered data begins when we overshoot the end
   if (newEnd > state.maxTs.getTime()) {
-    newStart = state.minTs.getTime();
+    newStart = firstFilteredTs();
     newEnd = newStart + windowMs;
   }
   setWindow(newStart, newEnd);
