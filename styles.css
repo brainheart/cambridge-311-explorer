@@ -24,6 +24,7 @@ body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: #1e6dd1; }
 .brand .title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
 .brand .sub { color: #667085; font-size: 12px; }
+.brand .build-stamp { color: #98a2b3; font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: 2px 6px; background: #f2f4f7; border-radius: 4px; }
 .controls { display: flex; gap: 14px; align-items: center; }
 .seg { display: inline-flex; border: 1px solid #dfe3e8; border-radius: 8px; overflow: hidden; background: #fff; }
 .seg button { border: 0; background: transparent; padding: 6px 12px; cursor: pointer; font-size: 13px; color: #475467; }
