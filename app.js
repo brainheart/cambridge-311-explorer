@@ -2,6 +2,9 @@
  * Single-page app: fetch data once, explore via map/charts/timeline.
  */
 
+// Bump this whenever app.js changes so the UI can show what's actually running.
+const BUILD_STAMP = "2026-04-22 · skip-sparse v2";
+
 // ---------- Config ----------
 const DATA_URL = "https://data.cambridgema.gov/resource/2z9k-mv9g.json";
 const NHOOD_URL = "https://data.cambridgema.gov/resource/k3pi-9823.geojson";
@@ -869,24 +872,38 @@ function buildFilterUI() {
 }
 
 // ---------- Animation ----------
-// Earliest timestamp among records matching current filters (types/statuses/nhoods),
-// ignoring the time window. Falls back to absolute minTs if nothing matches.
+// Timestamp where meaningful filtered activity begins — the earliest point
+// where a window-sized span contains a non-trivial cluster of matching
+// records. Skips isolated early dots that would otherwise make the animation
+// start in visually empty years.
 function firstFilteredTs() {
   const selTypes = state.selectedTypes;
   const selStatuses = state.selectedStatuses;
   const selNh = state.selectedNhoods;
   const nhFilter = selNh.size > 0;
   const recs = state.records;
-  let min = Infinity;
+  const times = [];
   for (let i = 0; i < recs.length; i++) {
     const r = recs[i];
     if (!selTypes.has(r.type)) continue;
     if (!selStatuses.has(r.status)) continue;
     if (nhFilter && !selNh.has(r.nhoodIdx)) continue;
-    const t = r.ts.getTime();
-    if (t < min) min = t;
+    times.push(r.ts.getTime());
   }
-  return isFinite(min) ? min : state.minTs.getTime();
+  if (times.length === 0) return state.minTs.getTime();
+  times.sort((a, b) => a - b);
+
+  const windowMs = Math.max(DAY_MS, state.windowEnd - state.windowStart);
+  // Require at least this many records inside the first window for it to
+  // count as "populated". Scales with total filtered volume, clamped so
+  // very low-volume filters still find a start.
+  const threshold = Math.max(3, Math.min(20, Math.floor(times.length * 0.005)));
+  let j = 0;
+  for (let s = 0; s < times.length; s++) {
+    while (j < times.length && times[j] <= times[s] + windowMs) j++;
+    if (j - s >= threshold) return times[s];
+  }
+  return times[0];
 }
 
 function togglePlay() {
@@ -946,6 +963,8 @@ async function main() {
     setTimeout(() => state.map && state.map.invalidateSize(), 50);
     $("#record-count").textContent =
       `${state.records.length.toLocaleString()} records • ${fmtDate(state.minTs)} – ${fmtDate(state.maxTs)}`;
+    const bs = $("#build-stamp");
+    if (bs) bs.textContent = `build ${BUILD_STAMP}`;
     setTimeout(() => {
       $("#loader").classList.add("hidden");
       // After loader hides, give the browser a frame to settle the grid layout
